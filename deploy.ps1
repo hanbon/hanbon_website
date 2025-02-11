@@ -83,19 +83,47 @@ function Deploy-Backend {
     Write-Host "`n开始部署后端..." -ForegroundColor Green
     
     # 复制后端文件
-    $remote_dest = "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/backend/"
-    scp -r "${BACKEND_PATH}/*" $remote_dest
-
-    # 重启后端服务
-    $remote_commands = @'
+    $remote_dest = "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/backend"
+    
+    # 确保目标目录存在
+    ssh "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p ${REMOTE_PATH}/backend"
+    
+    # 复制源代码文件
+    ssh "${REMOTE_USER}@${REMOTE_HOST}" "rm -rf ${REMOTE_PATH}/backend/src"
+    ssh "${REMOTE_USER}@${REMOTE_HOST}" "rm -rf ${REMOTE_PATH}/backend/config"
+    scp -r "${BACKEND_PATH}/src" $remote_dest/
+    scp -r "${BACKEND_PATH}/config" $remote_dest/
+    
+    # 复制其他必要文件（如果存在）
+    if (Test-Path "${BACKEND_PATH}/requirements.txt") {
+        scp "${BACKEND_PATH}/requirements.txt" $remote_dest/
+    }
+    
+    # 设置正确的权限
+    ssh "${REMOTE_USER}@${REMOTE_HOST}" @'
 cd /opt/hanbon/backend
+chown -R root:root .
+chmod -R 755 .
+
+# 安装新的依赖（如果有）
 source venv/bin/activate
+if [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+fi
+
+# 停止现有的服务
 pkill -f "uvicorn" || true
 sleep 2
-nohup uvicorn hanbon_python_backend.src.see:app --host 0.0.0.0 --port 7999 > app.log 2>&1 &
-'@ -replace "`r`n", "`n"
 
-    ssh "${REMOTE_USER}@${REMOTE_HOST}" $remote_commands
+# 设置环境变量并启动服务
+export ENV=production
+export PYTHONPATH=/opt/hanbon/backend
+nohup uvicorn src.sse:app --host 0.0.0.0 --port 7999  > app.log 2>&1 &
+
+# 显示启动日志
+tail -300f app.log
+sleep 5
+'@
     
     Write-Host "后端部署完成！" -ForegroundColor Green
 }
@@ -113,7 +141,15 @@ cd /opt/hanbon/backend
 source venv/bin/activate
 pkill -f "uvicorn" || true
 sleep 2
-nohup uvicorn hanbon_python_backend.src.see:app --host 0.0.0.0 --port 7999 > app.log 2>&1 &
+
+# 设置环境变量并启动服务
+export ENV=production
+export PYTHONPATH=/opt/hanbon/backend
+nohup python -m uvicorn src.sse:app --host 0.0.0.0 --port 7999 --log-level debug > app.log 2>&1 &
+
+# 显示启动日志
+tail -f app.log &
+sleep 5
 '@ -replace "`r`n", "`n"
 
     ssh "${REMOTE_USER}@${REMOTE_HOST}" $remote_commands

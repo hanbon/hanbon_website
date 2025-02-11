@@ -1385,7 +1385,7 @@
 
 "@vue/cli-plugin-babel@~5.0.0":
   version "5.0.8"
-  resolved "https://registry.npmmirror.com/@vue/cli-plugin-babel/-/cli-plugin-babel-5.0.8.tgz"
+  resolved "https://registry.npmjs.org/@vue/cli-plugin-babel/-/cli-plugin-babel-5.0.8.tgz"
   integrity sha512-a4qqkml3FAJ3auqB2kN2EMPocb/iu0ykeELwed+9B1c1nQ1HKgslKMHMPavYx3Cd/QAx2mBD4hwKBqZXEI/CsQ==
   dependencies:
     "@babel/core" "^7.12.16"
@@ -4165,6 +4165,11 @@ make-dir@^3.0.2, make-dir@^3.1.0:
   integrity sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw==
   dependencies:
     semver "^6.0.0"
+
+marked@^15.0.7:
+  version "15.0.7"
+  resolved "https://registry.npmjs.org/marked/-/marked-15.0.7.tgz"
+  integrity sha512-dgLIeKGLx5FwziAnsk4ONoGwHwGPJzselimvlVskE9XLN4Orv9u2VA3GWw/lYUqjfA0rUT/6fqKwfZJapP9BEg==
 
 math-intrinsics@^1.1.0:
   version "1.1.0"
