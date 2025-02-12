@@ -6,13 +6,82 @@
                 <img :src="logoSrc" alt="Logo" class="logo">
                 <h1>汉邦美食搜索</h1>
                 <div class="input-group">
-                    <input 
-                        type="text" 
-                        v-model="searchText"
-                        placeholder="输入食物名称..."
-                        @keyup.enter="performSearch"
-                    >
-                    <button @click="performSearch">搜索</button>
+                    <div class="search-input-wrapper">
+                        <input 
+                            type="text" 
+                            v-model="searchText"
+                            placeholder="输入食物名称..."
+                            @keyup.enter="debouncedSearch"
+                            @input="handleInput"
+                            :aria-invalid="!!inputError"
+                            :aria-describedby="inputError ? 'error-message' : undefined"
+                        >
+                        <!-- 添加建议列表 -->
+                        <div class="suggestions-list" v-if="suggestions.length && showSuggestions">
+                            <div 
+                                v-for="suggestion in suggestions" 
+                                :key="suggestion"
+                                class="suggestion-item"
+                                @click="selectSuggestion(suggestion)"
+                            >
+                                {{ suggestion }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="button-row">
+                        <button class="voice-btn" @click="startVoiceSearch" :class="{ 'recording': isRecording }">
+                            <ion-icon :name="isRecording ? 'mic' : 'mic-outline'"></ion-icon>
+                        </button>
+                        <button class="image-upload-btn" @click="triggerImageUpload">
+                            <ion-icon name="camera-outline"></ion-icon>
+                            <input 
+                                type="file" 
+                                ref="imageInput" 
+                                accept="image/*" 
+                                style="display: none" 
+                                @change="handleImageUpload"
+                            >
+                        </button>
+                        <button @click="debouncedSearch">搜索</button>
+                    </div>
+                </div>
+                
+                <!-- 错误提示 -->
+                <div v-if="inputError" id="error-message" class="error-message">
+                    {{ inputError }}
+                </div>
+
+                <!-- 今日推荐 -->
+                <div class="daily-recommendations" v-if="!hasResults">
+                    <h3>今日推荐 <span class="subtitle">基于天气：{{ weather.city }} {{ weather.temperature }}°C {{ weather.weather_icon }} {{ weather.weather }}</span></h3>
+                    <div class="recommendation-cards">
+                        <div v-for="item in dailyRecommendations" 
+                             :key="item.name" 
+                             class="recommendation-card"
+                             @click="selectFood(item.name)">
+                            <img :src="item.image" :alt="item.name">
+                            <div class="card-content">
+                                <h4>{{item.name}}</h4>
+                                <p>{{item.description}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索历史 -->
+                <div class="search-history" v-if="!hasResults && searchHistory.length">
+                    <h3>最近搜索</h3>
+                    <div class="history-tags">
+                        <span v-for="item in searchHistory" 
+                              :key="item" 
+                              @click="selectHistoryItem(item)"
+                              class="history-tag"
+                              tabindex="0"
+                              role="button"
+                              @keyup.enter="selectHistoryItem(item)">
+                            {{ item }}
+                        </span>
+                    </div>
                 </div>
                 
                 <!-- 添加菜谱来源切换按钮 -->
@@ -52,21 +121,32 @@
                         <!-- 卡路里面板 -->
                         <div class="calorie-panel" :class="{ 'loading': isLoading }">
                             <h3>卡路里信息</h3>
-                            <div class="calorie-info" v-html="calorieInfo || '加载中...'"></div>
+                            <div v-if="isLoading" class="skeleton-loading">
+                                <div class="skeleton" style="height: 24px; width: 80%;"></div>
+                            </div>
+                            <div v-else class="calorie-info" v-html="calorieInfo || '加载中...'"></div>
                         </div>
 
                         <!-- 食谱内容 -->
                         <div class="recipe-content">
                             <h2 class="recipe-title">{{ searchText }}的详细食谱</h2>
-                            <div class="recipe-details markdown-body" v-html="recipeDetails"></div>
+                            <div v-if="isLoading" class="skeleton-loading">
+                                <div v-for="i in 5" :key="i" class="skeleton" :style="{
+                                    height: '20px',
+                                    width: `${Math.random() * 40 + 60}%`,
+                                    marginBottom: '10px'
+                                }"></div>
+                            </div>
+                            <div v-else class="recipe-details markdown-body" v-html="recipeDetails"></div>
                         </div>
 
                         <!-- 配图面板 -->
                         <div class="recipe-image-panel">
                             <h3>美食图片</h3>
                             <div class="recipe-images" :class="{ 'loading': isLoading }">
+                                <div v-if="isLoading" class="skeleton" style="height: 300px;"></div>
                                 <img 
-                                    v-if="foodImage" 
+                                    v-else-if="foodImage" 
                                     :src="foodImage" 
                                     alt="食物图片"
                                     @load="onImageLoad"
@@ -77,12 +157,33 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 添加定时器组件 -->
+            <div v-if="hasResults" class="timer-container">
+                <div class="timer" v-if="showTimer">
+                    <div class="timer-display">{{formatTime(timerSeconds)}}</div>
+                    <div class="timer-controls">
+                        <button @click="startTimer" v-if="!timerRunning">开始</button>
+                        <button @click="pauseTimer" v-else>暂停</button>
+                        <button @click="resetTimer">重置</button>
+                    </div>
+                </div>
+                <button class="timer-toggle" @click="toggleTimer">
+                    <ion-icon :name="showTimer ? 'timer-outline' : 'timer'"></ion-icon>
+                </button>
+            </div>
+
+            <!-- 返回顶部按钮 -->
+            <div v-show="showBackToTop" class="back-to-top" @click="scrollToTop" role="button" tabindex="0">
+                <ion-icon name="arrow-up-outline"></ion-icon>
+            </div>
         </div>
     </div>
 </template>
 
 <script>
 import { marked } from 'marked';
+import { debounce } from 'lodash-es';
 
 /**
  * @description 搜索组件，用于食物搜索和食谱展示
@@ -99,20 +200,171 @@ export default {
             recipeDetails: '',
             foodImage: '',
             isLoading: false,
-            commonFoods: [
+            allFoods: [
+                // 主食类
+                { name: '米饭', icon: 'restaurant-outline' },
+                { name: '馒头', icon: 'restaurant-outline' },
+                { name: '面条', icon: 'restaurant-outline' },
+                { name: '饺子', icon: 'restaurant-outline' },
+                { name: '包子', icon: 'restaurant-outline' },
+                { name: '粥', icon: 'restaurant-outline' },
+                { name: '炒饭', icon: 'restaurant-outline' },
+                { name: '炒面', icon: 'restaurant-outline' },
+                { name: '拉面', icon: 'restaurant-outline' },
+                { name: '烩面', icon: 'restaurant-outline' },
+
+                // 肉类菜品
                 { name: '红烧肉', icon: 'restaurant-outline' },
-                { name: '糖醋排骨', icon: 'nutrition-outline' },
+                { name: '糖醋排骨', icon: 'restaurant-outline' },
                 { name: '宫保鸡丁', icon: 'restaurant-outline' },
-                { name: '麻婆豆腐', icon: 'leaf-outline' },
-                { name: '水煮鱼', icon: 'fish-outline' },
                 { name: '回锅肉', icon: 'restaurant-outline' },
+                { name: '东坡肉', icon: 'restaurant-outline' },
+                { name: '辣子鸡', icon: 'restaurant-outline' },
+                { name: '酱爆鸭丁', icon: 'restaurant-outline' },
+                { name: '红烧排骨', icon: 'restaurant-outline' },
+                { name: '可乐鸡翅', icon: 'restaurant-outline' },
+                { name: '烤鸭', icon: 'restaurant-outline' },
+                { name: '酸菜鱼', icon: 'fish-outline' },
+                { name: '水煮鱼', icon: 'fish-outline' },
+                { name: '清蒸鲈鱼', icon: 'fish-outline' },
+                { name: '红烧带鱼', icon: 'fish-outline' },
+                { name: '麻辣香锅', icon: 'restaurant-outline' },
+                { name: '烤肉', icon: 'restaurant-outline' },
+                { name: '羊肉串', icon: 'restaurant-outline' },
+                { name: '酱牛肉', icon: 'restaurant-outline' },
+                { name: '卤鸭', icon: 'restaurant-outline' },
+                { name: '烧鸡', icon: 'restaurant-outline' },
+
+                // 素菜
                 { name: '青椒炒蛋', icon: 'egg-outline' },
-                { name: '番茄炒蛋', icon: 'nutrition-outline' }
+                { name: '番茄炒蛋', icon: 'egg-outline' },
+                { name: '麻婆豆腐', icon: 'leaf-outline' },
+                { name: '地三鲜', icon: 'leaf-outline' },
+                { name: '炒青菜', icon: 'leaf-outline' },
+                { name: '蒜蓉菠菜', icon: 'leaf-outline' },
+                { name: '干煸四季豆', icon: 'leaf-outline' },
+                { name: '炒空心菜', icon: 'leaf-outline' },
+                { name: '炒韭菜', icon: 'leaf-outline' },
+                { name: '炒白菜', icon: 'leaf-outline' },
+
+                // 汤类
+                { name: '番茄蛋汤', icon: 'restaurant-outline' },
+                { name: '紫菜蛋汤', icon: 'restaurant-outline' },
+                { name: '西红柿牛腩汤', icon: 'restaurant-outline' },
+                { name: '排骨汤', icon: 'restaurant-outline' },
+                { name: '鸡汤', icon: 'restaurant-outline' },
+                { name: '羊肉汤', icon: 'restaurant-outline' },
+                { name: '海鲜汤', icon: 'restaurant-outline' },
+                { name: '冬瓜排骨汤', icon: 'restaurant-outline' },
+                { name: '萝卜牛腩汤', icon: 'restaurant-outline' },
+                { name: '玉米排骨汤', icon: 'restaurant-outline' },
+
+                // 小吃
+                { name: '春卷', icon: 'restaurant-outline' },
+                { name: '锅贴', icon: 'restaurant-outline' },
+                { name: '煎饺', icon: 'restaurant-outline' },
+                { name: '炸鸡', icon: 'restaurant-outline' },
+                { name: '薯条', icon: 'restaurant-outline' },
+                { name: '炸串', icon: 'restaurant-outline' },
+                { name: '炸酱面', icon: 'restaurant-outline' },
+                { name: '肉夹馍', icon: 'restaurant-outline' },
+                { name: '煎包', icon: 'restaurant-outline' },
+                { name: '生煎', icon: 'restaurant-outline' },
+
+                // 川菜
+                { name: '麻婆豆腐', icon: 'restaurant-outline' },
+                { name: '回锅肉', icon: 'restaurant-outline' },
+                { name: '鱼香肉丝', icon: 'restaurant-outline' },
+                { name: '宫保鸡丁', icon: 'restaurant-outline' },
+                { name: '水煮牛肉', icon: 'restaurant-outline' },
+                { name: '夫妻肺片', icon: 'restaurant-outline' },
+                { name: '辣子鸡', icon: 'restaurant-outline' },
+                { name: '毛血旺', icon: 'restaurant-outline' },
+                { name: '麻辣兔头', icon: 'restaurant-outline' },
+                { name: '干煸四季豆', icon: 'restaurant-outline' },
+
+                // 粤菜
+                { name: '白切鸡', icon: 'restaurant-outline' },
+                { name: '烧鹅', icon: 'restaurant-outline' },
+                { name: '叉烧', icon: 'restaurant-outline' },
+                { name: '虾饺', icon: 'restaurant-outline' },
+                { name: '蒸排骨', icon: 'restaurant-outline' },
+                { name: '蚝油生菜', icon: 'restaurant-outline' },
+                { name: '清蒸鱼', icon: 'fish-outline' },
+                { name: '咕噜肉', icon: 'restaurant-outline' },
+                { name: '豉汁蒸排骨', icon: 'restaurant-outline' },
+                { name: '白灼虾', icon: 'restaurant-outline' }
+
+                // ... 更多食物
             ],
+            commonFoods: [], // 用于存储随机选择的食物
             imageLoaded: false,
+            searchHistory: [],
+            inputError: '',
+            showBackToTop: false,
+            isRecording: false,
+            weather: {
+                city: '长沙',
+                temperature: 25,
+                weather: '晴朗',
+                weather_icon: '☀️'
+            },
+            dailyRecommendations: [],
+            showTimer: false,
+            timerSeconds: 0,
+            timerRunning: false,
+            timerInterval: null,
+            suggestions: [],
+            showSuggestions: false,
         }
     },
+    created() {
+        // 添加防抖处理
+        this.debouncedSearch = debounce(this.performSearch, 300);
+        // 从localStorage加载搜索历史
+        this.loadSearchHistory();
+        // 随机选择20个食物
+        this.updateRandomFoods();
+        // 获取天气推荐
+        this.fetchWeatherRecommendations();
+    },
+    mounted() {
+        window.addEventListener('scroll', this.handleScroll);
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-input-wrapper')) {
+                this.showSuggestions = false;
+            }
+        });
+    },
+    beforeUnmount() {
+        window.removeEventListener('scroll', this.handleScroll);
+        document.removeEventListener('click', this.handleClickOutside);
+    },
     methods: {
+        /**
+         * @description 加载搜索历史
+         */
+        loadSearchHistory() {
+            const history = localStorage.getItem('searchHistory');
+            if (history) {
+                this.searchHistory = JSON.parse(history);
+            }
+        },
+
+        /**
+         * @description 保存搜索历史
+         * @param {string} searchTerm - 搜索词
+         */
+        saveToHistory(searchTerm) {
+            if (!this.searchHistory.includes(searchTerm)) {
+                this.searchHistory.unshift(searchTerm);
+                if (this.searchHistory.length > 10) {
+                    this.searchHistory.pop();
+                }
+                localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
+            }
+        },
+
         /**
          * @description 处理流式响应数据
          * @param {Response} response - 响应对象
@@ -162,25 +414,35 @@ export default {
          * @description 执行搜索操作
          */
         async performSearch() {
-            if (!this.searchText) return;
+            if (!this.searchText.trim()) {
+                this.inputError = '请输入搜索内容';
+                return;
+            }
+
+            this.inputError = '';
             this.isLoading = true;
             this.hasResults = true;
             this.imageLoaded = false;
-            this.foodImage = ''; // 重置图片
-            
+            this.foodImage = '';
+
             try {
-                // 获取卡路里信息
-                const calorieResponse = await fetch(`${process.env.VUE_APP_API_BASE_URL}/call_openai?query=${encodeURIComponent(this.searchText)}`);
+                // 保存到搜索历史
+                this.saveToHistory(this.searchText);
+
+                // 并行请求处理
+                const [calorieResponse, recipeResponse] = await Promise.all([
+                    this.fetchCalorieInfo(),
+                    this.fetchRecipeInfo()
+                ]);
+
+                // 单独处理图片请求
+                await this.fetchFoodImage();
+
                 if (calorieResponse.ok) {
                     const data = await calorieResponse.json();
                     this.calorieInfo = data.content;
                 }
 
-                // 获取食谱信息
-                const recipeEndpoint = this.recipeSource === 'qwen' ? 
-                    'get_qwen_recipe' : 'get_recipe';
-                    
-                const recipeResponse = await fetch(`${process.env.VUE_APP_API_BASE_URL}/${recipeEndpoint}?food=${encodeURIComponent(this.searchText)}`);
                 if (recipeResponse.ok) {
                     this.recipeDetails = '';
                     let markdownContent = '';
@@ -193,25 +455,29 @@ export default {
                         }
                     );
                 }
-                
-                // 获取食物图片
-                const imageResponse = await fetch(`${process.env.VUE_APP_API_BASE_URL}/generate_food_image?food=${encodeURIComponent(this.searchText)}`);
-                if (imageResponse.ok) {
-                    await this.processStreamResponse(imageResponse, 
-                        content => {
-                            if (content && !content.startsWith('Error')) {
-                                this.foodImage = `data:image/jpeg;base64,${content}`;
-                            }
-                        }
-                    );
-                }
-                
+
             } catch (error) {
                 console.error('搜索出错:', error);
-                this.recipeDetails = '抱歉，获取数据时出现错误，请稍后重试。';
+                if (error.response) {
+                    this.showError(`请求失败: ${error.response.data.message || '未知错误'}`);
+                } else if (error.request) {
+                    this.showError('网络请求失败，请检查网络连接');
+                } else {
+                    this.showError('发生未知错误，请稍后重试');
+                }
             } finally {
                 this.isLoading = false;
             }
+        },
+
+        /**
+         * @description 显示错误信息
+         * @param {string} message - 错误信息
+         */
+        showError(message) {
+            // 这里可以使用你的UI框架的提示组件，比如Element UI的Message组件
+            // 如果没有UI框架，可以简单设置error状态
+            this.inputError = message;
         },
 
         /**
@@ -221,6 +487,8 @@ export default {
         selectFood(food) {
             this.searchText = food;
             this.performSearch();
+            // 选择食物后更新随机列表
+            this.updateRandomFoods();
         },
 
         async getRecipeRecommendation(food) {
@@ -431,7 +699,299 @@ export default {
         },
         onImageLoad() {
             this.imageLoaded = true;
-        }
+        },
+        /**
+         * @description 选择历史搜索项
+         * @param {string} item - 搜索历史项
+         */
+        selectHistoryItem(item) {
+            this.searchText = item;
+            this.debouncedSearch();
+        },
+
+        /**
+         * @description 获取卡路里信息
+         * @returns {Promise} 卡路里信息的响应
+         */
+        async fetchCalorieInfo() {
+            return fetch(`${process.env.VUE_APP_API_BASE_URL}/call_openai?query=${encodeURIComponent(this.searchText)}`);
+        },
+
+        /**
+         * @description 获取食谱信息
+         * @returns {Promise} 食谱信息的响应
+         */
+        async fetchRecipeInfo() {
+            const recipeEndpoint = this.recipeSource === 'qwen' ? 'get_qwen_recipe' : 'get_recipe';
+            return fetch(`${process.env.VUE_APP_API_BASE_URL}/${recipeEndpoint}?food=${encodeURIComponent(this.searchText)}`);
+        },
+
+        /**
+         * @description 获取食物图片
+         */
+        async fetchFoodImage() {
+            try {
+                const response = await fetch(`${process.env.VUE_APP_API_BASE_URL}/generate_food_image_baidu?food=${encodeURIComponent(this.searchText)}&limit=1&page=1`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.code === 200 && data.data.length > 0) {
+                    this.foodImage = data.data[0];  // 直接使用第一张图片的URL
+                } else {
+                    console.error('获取图片失败:', data.msg);
+                    this.foodImage = '';  // 清空图片
+                }
+            } catch (error) {
+                console.error('获取图片失败:', error);
+                this.foodImage = '';  // 清空图片
+            }
+        },
+
+        /**
+         * @description 处理滚动事件
+         */
+        handleScroll() {
+            this.showBackToTop = window.scrollY > 300;
+        },
+
+        /**
+         * @description 滚动到顶部
+         */
+        scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        },
+
+        /**
+         * @description 更新随机食物列表
+         */
+        updateRandomFoods() {
+            const shuffled = [...this.allFoods].sort(() => 0.5 - Math.random());
+            this.commonFoods = shuffled.slice(0, 20);
+        },
+
+        /**
+         * @description 开始语音搜索
+         */
+        async startVoiceSearch() {
+            // 检查浏览器是否支持语音识别
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                this.showError('您的浏览器不支持语音识别功能');
+                return;
+            }
+
+            try {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'zh-CN';
+
+                this.isRecording = true;
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    this.searchText = transcript;
+                    this.debouncedSearch();
+                };
+
+                recognition.onerror = (event) => {
+                    this.isRecording = false;
+                    this.showError('语音识别失败: ' + event.error);
+                };
+
+                recognition.onend = () => {
+                    this.isRecording = false;
+                };
+
+                recognition.start();
+            } catch (error) {
+                this.isRecording = false;
+                this.showError('启动语音识别失败: ' + error.message);
+            }
+        },
+
+        /**
+         * @description 触发图片上传
+         */
+        triggerImageUpload() {
+            this.$refs.imageInput.click();
+        },
+
+        /**
+         * @description 处理图片上传
+         */
+        async handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(`${process.env.VUE_APP_API_BASE_URL}/recognize_food`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    this.searchText = data.foodName;
+                    this.debouncedSearch();
+                }
+            } catch (error) {
+                console.error('图片识别失败:', error);
+                this.showError('图片识别失败，请重试');
+            }
+        },
+
+        /**
+         * @description 格式化时间
+         */
+        formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        },
+
+        /**
+         * @description 开始定时器
+         */
+        startTimer() {
+            if (!this.timerRunning) {
+                this.timerRunning = true;
+                this.timerInterval = setInterval(() => {
+                    if (this.timerSeconds > 0) {
+                        this.timerSeconds--;
+                    } else {
+                        this.stopTimer();
+                        // 播放提示音
+                        new Audio('/timer-done.mp3').play();
+                    }
+                }, 1000);
+            }
+        },
+
+        /**
+         * @description 暂停定时器
+         */
+        pauseTimer() {
+            this.timerRunning = false;
+            clearInterval(this.timerInterval);
+        },
+
+        /**
+         * @description 重置定时器
+         */
+        resetTimer() {
+            this.timerSeconds = 0;
+            this.pauseTimer();
+        },
+
+        /**
+         * @description 切换定时器显示
+         */
+        toggleTimer() {
+            this.showTimer = !this.showTimer;
+            if (!this.showTimer) {
+                this.pauseTimer();
+            }
+        },
+
+        /**
+         * @description 获取天气推荐
+         */
+        async fetchWeatherRecommendations() {
+            try {
+                const response = await fetch(`${process.env.VUE_APP_API_BASE_URL}/get_weather_recommendations`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.weather = data.weather;
+                    this.dailyRecommendations = data.recommendations.map(item => ({
+                        ...item,
+                        image: item.image || ''  // 确保有默认值
+                    }));
+                } else {
+                    console.error('获取天气推荐失败:', data.error);
+                    // 设置默认推荐
+                    this.dailyRecommendations = [
+                        {
+                            name: '清爽凉面',
+                            image: '',
+                            description: '清凉解暑的夏日美食'
+                        },
+                        {
+                            name: '水果沙拉',
+                            image: '',
+                            description: '营养清爽的健康美食'
+                        }
+                    ];
+                }
+            } catch (error) {
+                console.error('获取天气推荐失败:', error);
+                // 设置默认推荐
+                this.dailyRecommendations = [
+                    {
+                        name: '清爽凉面',
+                        image: '',
+                        description: '清凉解暑的夏日美食'
+                    },
+                    {
+                        name: '水果沙拉',
+                        image: '',
+                        description: '营养清爽的健康美食'
+                    }
+                ];
+            }
+        },
+
+        /**
+         * @description 处理输入事件，生成搜索建议
+         */
+        handleInput() {
+            if (!this.searchText.trim()) {
+                this.suggestions = [];
+                this.showSuggestions = false;
+                return;
+            }
+
+            // 从所有食物中筛选匹配的建议
+            this.suggestions = this.allFoods
+                .map(food => food.name)
+                .filter(name => name.includes(this.searchText))
+                .slice(0, 5);
+            
+            this.showSuggestions = true;
+        },
+
+        /**
+         * @description 选择建议项
+         * @param {string} suggestion - 选中的建议项
+         */
+        selectSuggestion(suggestion) {
+            this.searchText = suggestion;
+            this.showSuggestions = false;
+            this.debouncedSearch();
+        },
+
+        // 添加点击外部关闭建议列表的处理
+        mounted() {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-input-wrapper')) {
+                    this.showSuggestions = false;
+                }
+            });
+        },
+
+        beforeUnmount() {
+            document.removeEventListener('click', this.handleClickOutside);
+        },
     }
 }
 </script>
@@ -514,17 +1074,15 @@ h1 {
 /* 搜索输入框 */
 .input-group {
     display: flex;
-    gap: 10px;
-    margin: 20px 0;
+    flex-direction: column;
+    gap: 8px;
 }
 
-input {
-    flex: 1;
-    padding: 12px 20px;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    font-size: 16px;
-    transition: all 0.3s ease;
+.input-group input {
+    width: 100%;
+    height: 42px;
+    margin-right: 8px;
+    box-sizing: border-box;
 }
 
 input:focus {
@@ -825,6 +1383,38 @@ button:hover {
         height: 300px;
         min-height: 300px;
     }
+
+    /* 移动端输入组件样式优化 */
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .input-group input {
+        width: 100%;
+        height: 42px;
+        margin-right: 0;  /* 移动端下清除右边距 */
+    }
+
+    .input-group .button-row {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .input-group .voice-btn,
+    .input-group .image-upload-btn {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        flex: none;
+    }
+
+    .input-group button:last-child {
+        flex: 1;
+        height: 42px;
+    }
 }
 
 .recipe-image-panel h3 {
@@ -882,31 +1472,6 @@ button:hover {
     animation: shimmer 1.5s infinite;
 }
 
-@media (max-width: 480px) {
-    .search-input-container.sticky {
-        padding: 10px;
-    }
-
-    .sticky .logo {
-        width: 32px;
-        height: 32px;
-    }
-
-    .sticky h1 {
-        font-size: 16px;
-    }
-
-    .sticky .input-group {
-        margin: 8px 0;
-    }
-
-    .sticky button {
-        padding: 8px 16px;
-        font-size: 14px;
-    }
-}
-
-/* 加载动画 */
 .loading {
     position: relative;
 }
@@ -1019,5 +1584,346 @@ button:hover {
 .markdown-body p:has(strong:contains("小贴士"))::before {
     content: '💡';
     margin-right: 8px;
+}
+
+/* 错误消息样式 */
+.error-message {
+    color: #ff4d4f;
+    font-size: 14px;
+    margin-top: 8px;
+    text-align: left;
+}
+
+/* 搜索历史样式 */
+.search-history {
+    margin-top: 20px;
+    text-align: left;
+    width: 100%;
+}
+
+.search-history h3 {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.history-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.history-tag {
+    padding: 4px 12px;
+    background: rgba(0, 113, 227, 0.1);
+    border-radius: 16px;
+    color: #0071e3;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.history-tag:hover {
+    background: rgba(0, 113, 227, 0.2);
+    transform: translateY(-1px);
+}
+
+.history-tag:focus {
+    outline: 2px solid #0071e3;
+    outline-offset: 2px;
+}
+
+/* 添加骨架屏动画 */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0.1) 25%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        rgba(255, 255, 255, 0.1) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+/* 骨架屏加载样式 */
+.skeleton-loading {
+    padding: 20px;
+}
+
+/* 返回顶部按钮样式 */
+.back-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 40px;
+    height: 40px;
+    background: #0071e3;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.back-to-top:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.back-to-top:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.3);
+}
+
+.back-to-top:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.back-to-top:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.3);
+}
+
+.back-to-top:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.back-to-top:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.3);
+}
+
+@media (max-width: 768px) {
+    .back-to-top {
+        bottom: 20px;
+        right: 20px;
+    }
+}
+
+/* 语音和图片上传按钮的基础样式 */
+.voice-btn,
+.image-upload-btn {
+    padding: 12px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    color: #666;
+    border-radius: 10px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    width: 42px;
+    height: 42px;
+}
+
+/* 悬停效果 */
+.voice-btn:hover,
+.image-upload-btn:hover {
+    background: #f5f5f5;
+    border-color: #0071e3;
+    color: #0071e3;
+    transform: translateY(-1px);
+}
+
+/* 点击效果 */
+.voice-btn:active,
+.image-upload-btn:active {
+    transform: translateY(1px);
+}
+
+/* 录音状态样式 */
+.voice-btn.recording {
+    background: #0071e3;
+    color: white;
+    border-color: #0071e3;
+    animation: pulse 1.5s infinite;
+}
+
+/* 录音动画效果 */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 113, 227, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 113, 227, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 113, 227, 0);
+    }
+}
+
+/* 图标样式 */
+.voice-btn ion-icon,
+.image-upload-btn ion-icon {
+    font-size: 20px;
+}
+
+/* 今日推荐样式 */
+.daily-recommendations {
+    margin-top: 30px;
+    width: 100%;
+}
+
+.daily-recommendations h3 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #666;
+    font-weight: normal;
+}
+
+.recommendation-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.recommendation-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.recommendation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.recommendation-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.card-content {
+    padding: 15px;
+}
+
+.card-content h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+}
+
+.card-content p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}
+
+/* 定时器样式 */
+.timer-container {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    z-index: 1000;
+}
+
+.timer {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+}
+
+.timer-display {
+    font-size: 24px;
+    font-weight: bold;
+    color: #0071e3;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.timer-controls button {
+    flex: 1;
+    padding: 8px;
+    font-size: 14px;
+}
+
+.timer-toggle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #0071e3;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .timer-container {
+        bottom: 20px;
+        left: 20px;
+    }
+    
+    .recommendation-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.suggestion-item:hover {
+    background-color: #f5f5f5;
 }
 </style>

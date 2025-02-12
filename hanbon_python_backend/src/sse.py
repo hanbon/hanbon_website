@@ -10,6 +10,9 @@ import os
 import sys
 from pathlib import Path
 
+# 导入天气推荐相关函数
+from .app import weather_recommendations
+
 # 添加项目根目录到 Python 路径
 project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
@@ -52,6 +55,11 @@ client = OpenAI(
 JUHE_API_KEY = "49ed17916d463840e8d7f45183771198"
 JUHE_RECIPE_URL = "http://apis.juhe.cn/fapigx/caipu/query"
 
+# 添加百度图片搜索API配置
+BAIDU_IMG_API_ID = "10002477"  # 这里需要替换为你的实际ID
+BAIDU_IMG_API_KEY = "3752609fbeba1c8318a147a8f412bdf3"  # 这里需要替换为你的实际KEY
+BAIDU_IMG_API_URL = "https://cn.apihz.cn/api/img/apihzimgbaidu.php"
+
 @api_router.get("/generate_food_image")
 async def generate_food_image(food: str):
     if not food:
@@ -59,42 +67,104 @@ async def generate_food_image(food: str):
 
     async def generate():
         try:
-            # 构建搜索查询
-            search_query = f"{food}"
-            headers = {
-                "Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}",
-            }
+            # 构建API请求参数
             params = {
-                "query": search_query,
-                "per_page": 1,
-                "orientation": "landscape",
-                "content_filter": "high",
-                "order_by": "relevant"
+                "id": BAIDU_IMG_API_ID,
+                "key": BAIDU_IMG_API_KEY,
+                "words": food,
+                "limit": 1,  # 只获取一张图片
+                "page": 1,
+                "type": 1  # 返回百度预览图地址
             }
             
-            # 调用Unsplash API
-            response = requests.get(UNSPLASH_API_URL, headers=headers, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                if data["results"]:
-                    image_url = data["results"][0]["urls"]["regular"]
-                    # 下载图片
-                    img_response = requests.get(image_url)
-                    if img_response.status_code == 200:
-                        # 将图片转换为base64
-                        image_base64 = base64.b64encode(img_response.content).decode('utf-8')
-                        yield f"data: {image_base64}"
+            async with httpx.AsyncClient() as client:
+                response = await client.get(BAIDU_IMG_API_URL, params=params)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data["code"] == 200 and data["res"]:
+                        # 获取第一张图片的URL
+                        image_url = data["res"][0]
+                        
+                        # 下载图片
+                        img_response = await client.get(image_url)
+                        if img_response.status_code == 200:
+                            # 将图片转换为base64
+                            image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+                            yield f"data: {image_base64}"
+                        else:
+                            yield f"data: Error: Failed to download image"
                     else:
-                        yield f"data: Error: Failed to download image"
+                        yield f"data: Error: No images found"
                 else:
-                    yield f"data: Error: No images found"
-            else:
-                yield f"data: Error: Failed to fetch from Unsplash: {response.status_code}"
+                    yield f"data: Error: Failed to fetch from API: {response.status_code}"
                 
         except Exception as e:
             yield f"data: Error: {str(e)}"
 
     return StreamingResponse(generate(), media_type='text/event-stream')
+
+@api_router.get("/generate_food_image_baidu")
+async def generate_food_image_baidu(food: str, page: int = 1, limit: int = 1):
+    """
+    使用百度图片搜索API获取食物图片URL
+    
+    Args:
+        food (str): 要搜索的食物名称
+        page (int): 页码，默认1
+        limit (int): 返回结果数量，默认1，最大100
+    """
+    if not food:
+        return JSONResponse(content={"code": 400, "msg": "请提供食物名称"}, status_code=400)
+
+    # 限制limit的范围
+    if limit > 100:
+        limit = 100
+
+    try:
+        # 使用默认域名接口，更稳定可靠
+        api_url = "https://cn.apihz.cn/api/img/apihzimgbaidu.php"
+
+        # 构建API请求参数
+        params = {
+            "id": BAIDU_IMG_API_ID,
+            "key": BAIDU_IMG_API_KEY,
+            "words": food,
+            "limit": limit,
+            "page": page,
+            "type": 1  # 返回百度预览图地址
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(api_url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data["code"] == 200 and data["res"]:
+                    return JSONResponse(content={
+                        "code": 200,
+                        "msg": "success",
+                        "data": data["res"]
+                    })
+                else:
+                    return JSONResponse(content={
+                        "code": 400,
+                        "msg": data.get("msg", "未找到相关图片"),
+                        "data": []
+                    })
+            else:
+                return JSONResponse(content={
+                    "code": response.status_code,
+                    "msg": "API请求失败",
+                    "data": []
+                })
+            
+    except Exception as e:
+        return JSONResponse(content={
+            "code": 500,
+            "msg": str(e),
+            "data": []
+        })
 
 @api_router.get("/call_openai")
 async def call_openai(query: str):
@@ -229,6 +299,13 @@ async def get_qwen_recipe(food: str):
             yield f"data: Error: {str(e)}\n\n"
 
     return StreamingResponse(generate(), media_type='text/event-stream')
+
+@api_router.get("/get_weather_recommendations")
+async def get_weather_recommendations():
+    """
+    获取基于天气的食物推荐
+    """
+    return await weather_recommendations()
 
 async def get_basic_nutrition(food: str):
     """获取食材的基本营养信息"""
