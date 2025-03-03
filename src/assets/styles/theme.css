@@ -1,0 +1,33 @@
+:root {
+    /* 主色调 */
+    --primary-color: #FF6B35;
+    --primary-hover: #FF8B60;
+    --primary-light: rgba(255, 107, 53, 0.1);
+    
+    /* 辅助色 */
+    --secondary-color: #FFB800;
+    --secondary-hover: #FFD452;
+    --secondary-light: rgba(255, 184, 0, 0.1);
+    
+    /* 文字颜色 */
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --text-light: #999999;
+    
+    /* 背景色 */
+    --bg-primary: #f5f5f7;
+    --bg-secondary: #ffffff;
+    
+    /* 边框颜色 */
+    --border-color: #e0e0e0;
+    
+    /* 状态颜色 */
+    --success-color: #22c55e;
+    --warning-color: #FFB800;
+    --error-color: #ff4d4f;
+    
+    /* 阴影 */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+} 
