@@ -4,7 +4,7 @@
             <!-- 搜索输入区域 -->
             <div class="search-input-container" :class="{ 'sticky': hasResults }">
                 <img :src="logoSrc" alt="Logo" class="logo">
-                <h1>汉邦美食搜索</h1>
+                <!-- <h1>汉邦美食搜索</h1> -->
                 <div class="input-group">
                     <div class="search-input-wrapper">
                         <input 
@@ -16,6 +16,21 @@
                             :aria-invalid="!!inputError"
                             :aria-describedby="inputError ? 'error-message' : undefined"
                         >
+                        <div class="input-buttons">
+                            <button class="icon-btn image-upload-btn" @click="triggerImageUpload">
+                                <ion-icon name="camera-outline"></ion-icon>
+                                <input 
+                                    type="file" 
+                                    ref="imageInput" 
+                                    accept="image/*" 
+                                    style="display: none" 
+                                    @change="handleImageUpload"
+                                >
+                            </button>
+                            <button class="search-btn" @click="debouncedSearch">
+                                <ion-icon name="search-outline"></ion-icon>
+                            </button>
+                        </div>
                         <!-- 添加建议列表 -->
                         <div class="suggestions-list" v-if="suggestions.length && showSuggestions">
                             <div 
@@ -28,22 +43,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="button-row">
-                        <button class="voice-btn" @click="startVoiceSearch" :class="{ 'recording': isRecording }">
-                            <ion-icon :name="isRecording ? 'mic' : 'mic-outline'"></ion-icon>
-                        </button>
-                        <button class="image-upload-btn" @click="triggerImageUpload">
-                            <ion-icon name="camera-outline"></ion-icon>
-                            <input 
-                                type="file" 
-                                ref="imageInput" 
-                                accept="image/*" 
-                                style="display: none" 
-                                @change="handleImageUpload"
-                            >
-                        </button>
+                    <!-- <div class="button-row">
                         <button @click="debouncedSearch">搜索</button>
-                    </div>
+                    </div> -->
                 </div>
                 
                 <!-- 错误提示 -->
@@ -1010,11 +1012,11 @@ export default {
 
 .content-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1100px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top: 20vh;
+    margin-top: 5vh;
     transition: all 0.4s ease;
     gap: 20px;
 }
@@ -1034,13 +1036,11 @@ export default {
     text-align: center;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
-    margin: 0 auto;
 }
 
 .search-input-container.sticky {
     padding: 15px;
-    width: 100%;
-    max-width: 1200px;
+    max-width: 1100px;
     border-radius: 16px;
     margin-bottom: 20px;
 }
@@ -1137,7 +1137,7 @@ button:hover {
 /* 结果容器 */
 .results-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1100px;
     opacity: 0;
     transform: translateY(20px);
     animation: slideIn 0.5s forwards;
@@ -1155,7 +1155,7 @@ button:hover {
     grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr);
     grid-template-rows: auto 1fr;
     gap: 20px;
-    padding: 20px;
+    padding: 30px;
 }
 
 .calorie-panel {
@@ -1925,5 +1925,97 @@ button:hover {
 
 .suggestion-item:hover {
     background-color: #f5f5f5;
+}
+
+/* 搜索输入框包装器样式 */
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f5f5f5;
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+
+/* 输入框样式 */
+.search-input-wrapper input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 12px;
+    font-size: 16px;
+    outline: none;
+}
+
+/* 按钮组样式 */
+.input-buttons {
+    display: flex;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+/* 图标按钮基础样式 */
+.icon-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+/* 搜索按钮特殊样式 */
+.search-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: #0071e3;
+    color: white;
+}
+
+/* 图标大小 */
+.icon-btn ion-icon {
+    font-size: 20px;
+}
+
+/* 按钮悬停效果 */
+.icon-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.search-btn:hover {
+    background: #0077ED;
+    transform: translateY(-1px);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .search-input-wrapper {
+        flex-direction: row;
+        padding: 4px;
+    }
+
+    .input-buttons {
+        gap: 4px;
+    }
+
+    .icon-btn,
+    .search-btn {
+        width: 36px;
+        height: 36px;
+    }
 }
 </style>
