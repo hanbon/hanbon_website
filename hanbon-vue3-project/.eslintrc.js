@@ -8,6 +8,15 @@ module.exports = {
         'eslint:recommended'
     ],
     parserOptions: {
-        parser: '@babel/eslint-parser'
-    }
+        parser: '@babel/eslint-parser',
+        requireConfigFile: false,
+        babelOptions: {
+            presets: ['@babel/preset-env']
+        }
+    },
+    ignorePatterns: [
+        'public/**/*',
+        'dist/**/*',
+        'node_modules/**/*'
+    ]
 } 

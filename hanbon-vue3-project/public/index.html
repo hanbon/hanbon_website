@@ -1,19 +1,219 @@
 <!DOCTYPE html>
-<html lang="">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <link rel="icon" href="<%= BASE_URL %>logo.png">
-    <title>hanbon</title>
+    <!-- 优化的移动端视口配置 -->
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+    
+    <!-- 移动端优化meta标签 -->
+    <meta name="format-detection" content="telephone=no,email=no,address=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="食慧美食AI">
+    <meta name="application-name" content="食慧美食AI">
+    <meta name="theme-color" content="#6C63FF">
+    <meta name="msapplication-TileColor" content="#6C63FF">
+    <meta name="msapplication-navbutton-color" content="#6C63FF">
+    
+    <!-- 防止iOS页面缓存 -->
+    <meta name="apple-touch-fullscreen" content="yes">
+    
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+    <link rel="apple-touch-icon" href="<%= BASE_URL %>logo.png">
+    <title>瀚邦智能美食助手</title>
+    
+    <!-- 预加载配置文件 -->
+    <script src="<%= BASE_URL %>config.js"></script>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="瀚邦智能美食助手 - AI驱动的美食推荐、菜谱生成和餐厅搜索平台">
+    <meta name="keywords" content="美食助手,AI菜谱,餐厅推荐,智能烹饪,美食搜索">
+    <meta name="author" content="瀚邦科技">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="瀚邦智能美食助手">
+    <meta property="og:description" content="AI驱动的美食推荐、菜谱生成和餐厅搜索平台">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="<%= BASE_URL %>hanbon_logo.png">
+    
+    <!-- 预加载字体和资源 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    
+    <!-- 性能优化 -->
+    <link rel="dns-prefetch" href="//webapi.amap.com">
+    <link rel="preconnect" href="//restapi.amap.com">
+    
+    <style>
+      /* 防止FOUC和提供加载动画 */
+      #app {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+      
+      /* 移动端滚动优化 */
+      html {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        touch-action: manipulation;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        overscroll-behavior: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* iOS安全区域适配 */
+      @supports(padding: max(0px)) {
+        body {
+          padding-left: max(0px, env(safe-area-inset-left));
+          padding-right: max(0px, env(safe-area-inset-right));
+        }
+      }
+      
+      /* 全局加载样式 */
+      .app-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #6C63FF 0%, #86A8E7 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      
+      .loading-content {
+        text-align: center;
+        color: white;
+      }
+      
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      
+      .loading-subtitle {
+        font-size: 14px;
+        opacity: 0.8;
+      }
+      
+      /* 隐藏加载屏幕当应用准备好时 */
+      .app-ready .loading-screen {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.5s ease;
+      }
+    </style>
   </head>
   <body>
     <noscript>
-      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+      <strong>很抱歉，瀚邦智能美食助手需要启用JavaScript才能正常工作。请启用JavaScript并刷新页面。</strong>
     </noscript>
-    <div id="app"></div>
+    
+    <!-- 应用容器 -->
+    <div id="app">
+      <!-- 加载动画 -->
+      <div class="app-loading" id="app-loading">
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">瀚邦智能美食助手</div>
+          <div class="loading-subtitle">正在为您准备美食体验...</div>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      // 全局错误处理
+      window.onerror = function(msg, file, line, col, error) {
+        console.error('应用错误:', {
+          message: msg,
+          file: file,
+          line: line,
+          column: col,
+          error: error
+        });
+        return false;
+      };
+      
+      // 检查配置加载
+      if (!window.APP_CONFIG) {
+        console.warn('配置文件未正确加载，使用默认配置');
+        window.APP_CONFIG = {
+          AMAP_KEY: '您的高德地图API密钥',
+          DEBUG: true
+        };
+      }
+      
+      // 隐藏加载动画
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+          const loading = document.getElementById('app-loading');
+          if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(function() {
+              loading.style.display = 'none';
+            }, 300);
+          }
+        }, 1500);
+      });
+      
+      // 移动端优化脚本
+      (function() {
+        // 防止iOS弹跳滚动
+        document.addEventListener('touchmove', function(e) {
+          if (e.target.closest('.messages-list') || e.target.closest('textarea')) {
+            return;
+          }
+          e.preventDefault();
+        }, { passive: false });
+        
+        // iOS状态栏适配
+        if (window.navigator.standalone) {
+          document.documentElement.style.setProperty('--status-bar-height', '20px');
+        }
+        
+        // Android Chrome地址栏适配
+        function setViewportHeight() {
+          const vh = window.innerHeight * 0.01;
+          document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        setViewportHeight();
+        window.addEventListener('resize', setViewportHeight);
+      })();
+    </script>
+    
     <!-- built files will be auto injected -->
   </body>
 </html>

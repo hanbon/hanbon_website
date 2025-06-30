@@ -1,0 +1,10 @@
+hanbon_python_backend/config/__pycache__/__init__.cpython-311.pyc
+hanbon_python_backend/config/__pycache__/development.cpython-311.pyc
+hanbon_python_backend/config/__pycache__/production.cpython-311.pyc
+hanbon_python_backend/config/__pycache__/*
+hanbon_vue3-project/node_modules
+hanbon_python_backend/src/node_modules
+hanbon_python_backend/config/__pycache__
+hanbon_python_backend/src/__pycache__
+hanbon_python_backend/src/agent/__pycache__
+hanbon_python_backend/venv

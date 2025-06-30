@@ -1,0 +1,96 @@
+# Hanbon美食智能助手 - 环境变量配置示例
+# 请将此文件重命名为 .env 并填入真实的API密钥
+
+# ===========================================
+# AI模型配置
+# ===========================================
+
+# DeepSeek API (必需)
+DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_API_BASE=https://api.deepseek.com/v1
+DEEPSEEK_MAX_TOKENS=4000
+DEEPSEEK_TEMPERATURE=0.7
+
+# DeepSeek火山引擎版本 (可选)
+DEEPSEEK_HUOSHAN_API_KEY=your_deepseek_huoshan_api_key
+DEEPSEEK_HUOSHAN_API_BASE=https://ark.cn-beijing.volces.com/api/v3
+
+# 豆包火山引擎版本 (可选)
+DOUBAO_HUOSHAN_API_BASE=https://ark.cn-beijing.volces.com/api/v3
+DOUBAO_HUOSHAN_MAX_TOKENS=4000
+DOUBAN1_HUOSHAN_TEMPERATURE=0.7
+
+# 通义千问 (可选)
+QWEN_API_KEY=your_qwen_api_key
+QWEN_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# OpenAI (可选)
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_API_BASE=https://api.openai.com/v1
+
+# Anthropic Claude (可选)
+ANTHROPIC_API_KEY=your_anthropic_api_key
+
+# 月之暗面 (可选)
+MOONSHOT_API_KEY=your_moonshot_api_key
+MOONSHOT_API_BASE=https://api.moonshot.cn/v1
+
+# ===========================================
+# 工具API配置
+# ===========================================
+
+# OpenWeather API (天气查询功能必需)
+OPENWEATHER_API_KEY=your_openweather_api_key
+
+# 高德地图API (地图搜索功能)
+AMAP_API_KEY=your_amap_api_key
+
+# Bing搜索API (搜索和图片功能)
+BING_API_KEY=your_bing_search_api_key
+
+# OpenMemory API (记忆功能)
+OPENMEMORY_API_KEY=your_openmemory_api_key
+OPENMEMORY_BASE_URL=https://api.openmemory.ai
+
+# ===========================================
+# 系统配置
+# ===========================================
+
+# 默认使用的AI模型
+DEFAULT_AI_MODEL=deepseek
+
+# 数据库配置
+DATABASE_URL=sqlite:///hanbon_agent.db
+
+# Redis配置 (可选，用于缓存)
+REDIS_URL=redis://localhost:6379/0
+REDIS_PASSWORD=
+
+# 安全配置
+SECRET_KEY=your_secret_key_here
+
+# SSL证书 (生产环境)
+SSL_CERT_PATH=
+SSL_KEY_PATH=
+
+# ===========================================
+# API密钥获取说明
+# ===========================================
+
+# OpenWeather API:
+# 1. 访问 https://openweathermap.org/api
+# 2. 注册账号并获取免费API密钥
+# 3. 免费版本每分钟可调用60次，每天1000次
+
+# 高德地图API:
+# 1. 访问 https://lbs.amap.com/
+# 2. 注册开发者账号
+# 3. 创建应用获取Web服务API密钥
+
+# Bing搜索API:
+# 1. 访问 https://www.microsoft.com/en-us/bing/apis/bing-web-search-api
+# 2. 创建Azure账号并订阅Bing Search服务
+
+# DeepSeek API:
+# 1. 访问 https://platform.deepseek.com/
+# 2. 注册账号并获取API密钥 

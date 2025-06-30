@@ -1085,6 +1085,11 @@ h1 {
     box-sizing: border-box;
 }
 
+.input-group input::placeholder {
+    color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+}
+
 input:focus {
     outline: none;
     border-color: #0071e3;
@@ -1952,6 +1957,11 @@ button:hover {
     padding: 8px 12px;
     font-size: 16px;
     outline: none;
+}
+
+.search-input-wrapper input::placeholder {
+    color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
 }
 
 /* 按钮组样式 */

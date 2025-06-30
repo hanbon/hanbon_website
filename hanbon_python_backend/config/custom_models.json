@@ -1,0 +1,14 @@
+{
+  "example_custom_model": {
+    "name": "示例自定义模型",
+    "model": "gpt-3.5-turbo",
+    "api_key": "your_api_key_here",
+    "api_base": "https://api.openai.com/v1",
+    "max_tokens": 4000,
+    "temperature": 0.7,
+    "supports_streaming": true,
+    "description": "这是一个示例自定义模型配置",
+    "enabled": false,
+    "type": "custom"
+  }
+}
