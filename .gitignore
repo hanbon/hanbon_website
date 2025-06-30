@@ -8,3 +8,4 @@ hanbon_python_backend/config/__pycache__
 hanbon_python_backend/src/__pycache__
 hanbon_python_backend/src/agent/__pycache__
 hanbon_python_backend/venv
+hanbon_python_backend/.env
